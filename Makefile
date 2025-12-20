@@ -12,6 +12,7 @@ bin:
 	GOOS=linux GOARCH=amd64 go build -o $(shell echo $$PWD/bin/gitx_Linux_x86_64) main.go
 	GOOS=darwin GOARCH=amd64 go build -o $(shell echo $$PWD/bin/gitx_Darwin_x86_64) main.go
 	GOOS=darwin GOARCH=arm64 go build -o $(shell echo $$PWD/bin/gitx_Darwin_arm64) main.go
+	GOOS=windows GOARCH=amd64 go build -o $(shell echo $$PWD/bin/gitx_Windows_x86_64.exe) main.go
 
 
 add:
