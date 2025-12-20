@@ -60,6 +60,11 @@ gitx init
 vim ~/.patch/config.yaml
 ```
 
+**Windows 系统**：
+```bash
+notepad %USERPROFILE%\.patch\config.yaml
+```
+
 ### 3. 基础使用
 
 #### 推送带 Jira 信息的 Commit

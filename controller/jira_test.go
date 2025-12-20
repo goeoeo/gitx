@@ -53,7 +53,7 @@ func TestJiraController_CheckBranchMerged(t *testing.T) {
 func getJiraController(t *testing.T) *JiraController {
 	logrus.SetLevel(logrus.DebugLevel)
 	logrus.SetFormatter(&logrus.TextFormatter{})
-	cfg := repo.GetConfig("/Users/yu/.patch/config.yaml")
+	cfg := repo.GetConfig("../config.yaml")
 	cfg.DisableInitLog = true
 	cfg.Init()
 	jira, err := NewJiraController(cfg)

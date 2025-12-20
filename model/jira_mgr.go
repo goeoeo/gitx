@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -17,7 +18,7 @@ type JiraMgr struct {
 func NewJiraMgr() (jm *JiraMgr, err error) {
 	d, _ := os.UserHomeDir()
 	jm = &JiraMgr{
-		saveDir: d + "/.patch/",
+		saveDir: filepath.Join(d, ".patch"),
 	}
 	if err = jm.load(); err != nil {
 		return
@@ -94,7 +95,7 @@ func (jm *JiraMgr) Detach(project, jiraID, branch string) (err error) {
 }
 
 func (jm *JiraMgr) savePath() string {
-	return jm.saveDir + "/" + "jira.json"
+	return filepath.Join(jm.saveDir, "jira.json")
 }
 
 func (jm *JiraMgr) load() (err error) {

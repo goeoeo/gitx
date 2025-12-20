@@ -48,7 +48,7 @@ func createPatchConfig() (err error) {
 
 	dir := filepath.Join(homeDir, ".patch")
 	if _, err = os.Stat(dir); err != nil {
-		if _, err = repo.ExecCmd(homeDir, "mkdir", ".patch"); err != nil {
+		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 			return
 		}
 	}

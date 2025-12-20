@@ -6,6 +6,7 @@ import (
 	"github.com/goeoeo/gitx/repo"
 	"github.com/spf13/cobra"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -52,5 +53,5 @@ func init() {
 
 func defaultConfigPath() string {
 	d, _ := os.UserHomeDir()
-	return d + "/.patch/config.yaml"
+	return filepath.Join(d, ".patch", "config.yaml")
 }
