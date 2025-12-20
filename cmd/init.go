@@ -3,10 +3,12 @@ package cmd
 import (
 	_ "embed"
 	"fmt"
-	"github.com/goeoeo/gitx/repo"
-	"github.com/spf13/cobra"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+
+	"github.com/goeoeo/gitx/repo"
+	"github.com/spf13/cobra"
 )
 
 // configContentTpl 配置文件模板
@@ -44,14 +46,14 @@ func createPatchConfig() (err error) {
 		return
 	}
 
-	dir := homeDir + "/.patch"
+	dir := filepath.Join(homeDir, ".patch")
 	if _, err = os.Stat(dir); err != nil {
 		if _, err = repo.ExecCmd(homeDir, "mkdir", ".patch"); err != nil {
 			return
 		}
 	}
 
-	configPath := homeDir + "/.patch/config.yaml"
+	configPath := filepath.Join(homeDir, ".patch", "config.yaml")
 
 	// 文件不存在，创建
 	if _, err = os.Stat(configPath); err == nil {

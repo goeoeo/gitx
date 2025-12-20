@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -71,7 +71,7 @@ func GetConfig(configPaths ...string) *Config {
 	}
 	if configPath == "" {
 		d, _ := os.UserHomeDir()
-		configPath = d + "/.patch/config.yaml"
+		configPath = filepath.Join(d, ".patch", "config.yaml")
 	}
 
 	data, err := ioutil.ReadFile(configPath)
@@ -94,7 +94,7 @@ func GetConfig(configPaths ...string) *Config {
 
 	if config.HomeDir == "" {
 		config.HomeDir, _ = os.UserHomeDir()
-		config.HomeDir += "/.patch"
+		config.HomeDir = filepath.Join(config.HomeDir, ".patch")
 	}
 
 	if config.Patch.TmpBranchFmt == "" {
@@ -108,7 +108,10 @@ func GetConfig(configPaths ...string) *Config {
 
 // 解析当前目录信息
 func (c *Config) parsePwd() (err error) {
-	c.pwd = os.Getenv("PWD")
+	c.pwd, err = os.Getwd()
+	if err != nil {
+		return
+	}
 	logrus.Debugf("当前目录:%s", c.pwd)
 
 	projectName := util.GetLastDir(c.pwd)
@@ -283,7 +286,7 @@ func (c *Config) CheckErr(err error) {
 }
 
 func (c *Config) readProjectRepoUrl() (err error) {
-	projectRepoUrlFile := path.Join(c.HomeDir, "repo.json")
+	projectRepoUrlFile := filepath.Join(c.HomeDir, "repo.json")
 
 	c.projectRepoUrl = make(map[string]*Repo)
 	if err = util.ReadJsonFile(projectRepoUrlFile, &c.projectRepoUrl); err != nil {
@@ -297,14 +300,13 @@ func (c *Config) readProjectRepoUrl() (err error) {
 		} else {
 			c.Repo[project] = repoTmp
 		}
-
 	}
 
 	return
 }
 
 func (c *Config) writeProjectRepoUrl() (err error) {
-	projectRepoUrlFile := path.Join(c.HomeDir, "repo.json")
+	projectRepoUrlFile := filepath.Join(c.HomeDir, "repo.json")
 	return util.WriteJsonFile(projectRepoUrlFile, &c.projectRepoUrl)
 }
 
