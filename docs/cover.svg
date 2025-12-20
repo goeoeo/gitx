@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f2027;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#203a43;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2c5364;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="accentGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#3498db;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2980b9;stop-opacity:0.8" />
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&amp;display=swap');
+      .title { font-family: 'Inter', sans-serif; font-weight: 900; }
+      .subtitle { font-family: 'Inter', sans-serif; font-weight: 600; }
+      .text { font-family: 'Inter', sans-serif; font-weight: 400; }
+    </style>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGrad)"/>
+  
+  <!-- Accent elements -->
+  <circle cx="200" cy="450" r="180" fill="url(#accentGrad)" opacity="0.1"/>
+  <circle cx="1000" cy="180" r="200" fill="#3498db" opacity="0.08"/>
+  <circle cx="600" cy="600" r="150" fill="#2ecc71" opacity="0.05"/>
+  
+  <!-- Main content -->
+  <g transform="translate(80, 80)">
+    <!-- Title -->
+    <text class="title" x="0" y="100" font-size="80" fill="white">Gitx</text>
+    
+    <!-- Tagline -->
+    <text class="subtitle" x="0" y="150" font-size="32" fill="#3498db">高效代码合并工具</text>
+    
+    <!-- Icon: Git and merge -->
+    <g transform="translate(800, 100)" filter="url(#glow)">
+      <!-- Merge branches icon -->
+      <path d="M 50 50 L 150 150 M 150 50 L 50 150" stroke="#3498db" stroke-width="6" stroke-linecap="round" fill="none"/>
+      <circle cx="50" cy="50" r="15" fill="#3498db"/>
+      <circle cx="150" cy="50" r="15" fill="#3498db"/>
+      <circle cx="100" cy="100" r="18" fill="#2ecc71"/>
+      
+      <!-- Git branch-like elements -->
+      <path d="M 100 100 L 180 180" stroke="#e74c3c" stroke-width="4" fill="none"/>
+      <circle cx="180" cy="180" r="12" fill="#e74c3c"/>
+    </g>
+    
+    <!-- Features -->
+    <g transform="translate(0, 200)">
+      <text class="text" x="0" y="50" font-size="24" fill="white">🎯 核心价值：一周节约半小时</text>
+      <text class="text" x="0" y="90" font-size="22" fill="#ecf0f1">✅ 自动化 cherry-pick 流程</text>
+      <text class="text" x="0" y="125" font-size="22" fill="#ecf0f1">🚀 多分支多项目支持</text>
+      <text class="text" x="0" y="160" font-size="22" fill="#ecf0f1">💡 智能冲突处理</text>
+    </g>
+    
+    <!-- Command example -->
+    <rect x="0" y="380" width="450" height="80" rx="10" fill="#2c3e50" opacity="0.8"/>
+    <text class="text" x="30" y="415" font-size="18" fill="#e74c3c">gitx push -b dev,qa -p projectA,projectB</text>
+    
+    <!-- Efficiency metric -->
+    <g transform="translate(500, 380)">
+      <text class="subtitle" x="0" y="40" font-size="26" fill="#2ecc71">效率提升 12 倍</text>
+      <text class="text" x="0" y="70" font-size="18" fill="#bdc3c7">36 分钟手动操作 → 3 分钟自动完成</text>
+    </g>
+    
+    <!-- Footer -->
+    <text class="text" x="0" y="500" font-size="16" fill="#7f8c8d">Go 语言开发 · 开源 · 免费 · 高性能</text>
+  </g>
+  
+  <!-- Logo accent -->
+  <circle cx="1050" cy="520" r="60" fill="url(#bgGrad)" stroke="#3498db" stroke-width="3"/>
+  <text class="title" x="1020" y="525" font-size="28" fill="#3498db">G</text>
+</svg>
