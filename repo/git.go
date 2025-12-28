@@ -6,13 +6,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/goeoeo/gitx/model"
-	"github.com/sirupsen/logrus"
-	"github.com/xanzy/go-gitlab"
 	"log"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/goeoeo/gitx/model"
+	"github.com/sirupsen/logrus"
+	"github.com/xanzy/go-gitlab"
 )
 
 const (
@@ -54,8 +55,48 @@ func (g *GitRepo) GetBranchs() ([]string, error) {
 		if strings.HasPrefix(branchLine, "*") {
 			lineSplit := strings.Split(branchLine, " ")
 			branchs = append([]string{lineSplit[1]}, branchs...)
+		} else {
+			branchs = append(branchs, branchLine)
 		}
-		branchs = append(branchs, branchLine)
+	}
+	return branchs, nil
+}
+
+// GetBranchCreateTime 获取分支创建时间
+func (g *GitRepo) GetBranchCreateTime(branch string) (time.Time, error) {
+	cmdRet, err := ExecCmd(g.Path, "git", "log", "--pretty=format:%ai", "--reverse", branch, "--")
+	if err != nil {
+		logrus.Debugf("get branch create time faild: branch: %s, out: %s, err: %s \n", branch, cmdRet.Out, cmdRet.ErrStr)
+		return time.Time{}, err
+	}
+	lines := strings.Split(cmdRet.Out, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			// 格式：2023-01-01 12:00:00 +0800
+			return time.Parse("2006-01-02 15:04:05 -0700", line)
+		}
+	}
+	return time.Time{}, fmt.Errorf("no commit found for branch: %s", branch)
+}
+
+// GetRemoteBranchs 获取远程分支
+func (g *GitRepo) GetRemoteBranchs() ([]string, error) {
+	cmdRet, err := ExecCmd(g.Path, "git", "branch", "-r")
+	if err != nil {
+		logrus.Debugf("get remote branchs faild: out: %s, err: %s \n", cmdRet.Out, cmdRet.ErrStr)
+		return nil, err
+	}
+	lines := strings.Split(cmdRet.Out, "\n")
+	var branchs []string
+	for _, line := range lines {
+		branchLine := strings.TrimSpace(line)
+		if len(branchLine) == 0 {
+			continue
+		}
+		// 移除 origin/ 前缀
+		branch := strings.TrimPrefix(branchLine, "origin/")
+		branchs = append(branchs, branch)
 	}
 	return branchs, nil
 }
@@ -182,6 +223,26 @@ func (g *GitRepo) DelRemoteBranch(branch string) error {
 		logrus.Debugf("illegal parameter: branch: %s \n", branch)
 		return errors.New("illegal params: branch")
 	}
+
+	// 删除远程分支前需要检查远程是否有该分支相关的mr没有合并
+	if g.gitlabConfig != nil && g.gitlabConfig.Token != "" {
+		gitClient, err := gitlab.NewClient(g.gitlabConfig.Token, gitlab.WithBaseURL(g.gitlabConfig.BaseUrl))
+		if err == nil {
+			// 查询以当前分支为源分支的未合并MR
+			openedMRs, _, err := gitClient.MergeRequests.ListProjectMergeRequests(g.getPid(), &gitlab.ListProjectMergeRequestsOptions{
+				State:        gitlab.String("opened"),
+				SourceBranch: gitlab.String(branch),
+			})
+			if err == nil && len(openedMRs) > 0 {
+				logrus.Warnf("跳过删除分支 %s，存在未合并的MR: %d 个\n", branch, len(openedMRs))
+				for _, mr := range openedMRs {
+					logrus.Warnf("MR标题: %s, URL: %s\n", mr.Title, mr.WebURL)
+				}
+				return fmt.Errorf("分支 %s 存在未合并的MR，无法删除", branch)
+			}
+		}
+	}
+
 	cmdRet, err := ExecCmd(g.Path, "git", "push", "origin", "--delete", branch)
 	if err != nil {
 		logrus.Debugf("delete remote branch faild: out: %s, err: %s \n", cmdRet.Out, cmdRet.ErrStr)

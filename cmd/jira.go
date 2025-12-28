@@ -2,18 +2,31 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/goeoeo/gitx/controller"
 	"github.com/goeoeo/gitx/repo"
 	"github.com/spf13/cobra"
-	"os"
-	"strings"
 )
 
 var JiraCmd = &cobra.Command{
 	Use:   "jira",
 	Short: "jira",
 	Run: func(cmd *cobra.Command, args []string) {
-		config := repo.GetConfig(configPath).Init()
+		// 优先使用args[0]作为action，否则使用action参数
+		actualAction := action
+		if len(args) > 0 {
+			actualAction = args[0]
+		}
+
+		// 只有clear命令需要输出日志到标准输出
+		config := repo.GetConfig(configPath)
+		if actualAction == "clear" {
+			config.EnableLogOutput = true
+		}
+		config = config.Init()
+
 		jc, err := controller.NewJiraController(config)
 		config.CheckErr(err)
 		if project == "" {
@@ -21,22 +34,23 @@ var JiraCmd = &cobra.Command{
 		}
 
 		fmt.Println("current project:", project)
-		switch action {
+
+		switch actualAction {
 		case "add":
 			err = jc.Add(project, jiraID, strings.Split(branchList, ","))
 		case "del":
 			err = jc.Del(project, jiraID)
 		case "clear":
-			err = jc.Clear(project, disableCheckMerged)
+			err = jc.Clear()
 		case "print":
 			err = jc.Print(project, jiraID)
 		default:
-			err = fmt.Errorf("action not suppert:%s", action)
+			err = fmt.Errorf("action not suppert:%s", actualAction)
 		}
 
 		config.CheckErr(err)
 
-		fmt.Printf("%s success\n", action)
+		fmt.Printf("%s success\n", actualAction)
 	},
 }
 

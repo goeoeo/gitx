@@ -27,7 +27,7 @@ func TestJiraController_DelJira(t *testing.T) {
 
 func TestJiraController_Clear(t *testing.T) {
 	jira := getJiraController(t)
-	err := jira.Clear("production", true)
+	err := jira.Clear()
 	assert.Nil(t, err)
 }
 

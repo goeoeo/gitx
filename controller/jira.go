@@ -3,6 +3,8 @@ package controller
 import (
 	"fmt"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/goeoeo/gitx/model"
 	"github.com/goeoeo/gitx/repo"
@@ -28,33 +30,22 @@ func NewJiraController(config *repo.Config) (jc *JiraController, err error) {
 	return
 }
 
-// Clear 检查目标分支中是否已合并定时任务若，若已合并则标记，同时删除本地以及远程分支
+// Clear 清理远程分支没有MR且超过一周的分支
 // 配合定时任务，保持本地项目和远程项目的分支简洁性
-func (jc *JiraController) Clear(project string, disableCheckMerged bool) (err error) {
-	//载入jira数据
+func (jc *JiraController) Clear() (err error) {
+	logrus.Infof("开始清理分支，当前jira数据库中的项目数量:%d\n", len(jc.jm.JiraList))
+
+	// 载入jira数据
 	for _, j := range jc.jm.JiraList {
-
-		if project != "" && j.Project != project {
-			continue
-		}
-
-		merged := 0
+		logrus.Infof("处理项目:%s\n", j.Project)
 		for _, jb := range j.BranchList {
-			if err = jc.delBranch(j, jb, disableCheckMerged); err != nil {
-				return
+			if err = jc.delBranch(j, jb); err != nil {
+				logrus.Errorf("删除分支错误:%s\n", err)
 			}
-			if jb.Merged {
-				merged++
-			}
-		}
-
-		//已全部merge
-		if len(j.BranchList) == merged && merged == len(j.TargetBranch) {
-			j.Merged = true
 		}
 	}
 
-	//持久化
+	// 持久化
 	err = jc.jm.Save()
 	return
 }
@@ -85,62 +76,73 @@ func (jc *JiraController) Detach(project, jiraID, branch string) error {
 	return jc.jm.Detach(project, jiraID, branch)
 }
 
-func (jc *JiraController) delBranch(j *model.Jira, jb *model.JiraBranch, disableCheckMerged bool) (err error) {
+func (jc *JiraController) delBranch(j *model.Jira, jb *model.JiraBranch) (err error) {
 	var (
-		merged bool
-		ok     bool
+		branchTime time.Time
+		repoPath   string
+		repoUrl    string
 	)
+
+	// 如果已经标记为已合入，则直接跳过
+	if jb.Merged {
+		logrus.Infof("跳过，分支已标记为已合入:%s \n", jb.BranchName)
+		return
+	}
 
 	if jb.DevBranch == "" {
 		return
 	}
 
-	if jb.Merged {
-		if ok, err = jc.branchExists(j, jb); err != nil {
-			return
-		}
-
-		if !ok {
-			return
-		}
-	}
-
-	repoCfg := jc.config.Repo[j.Project]
+	// 获取项目配置
+	repoCfg := jc.config.GetProjectRepoUrl(j.Project)
 	if repoCfg == nil {
-		return fmt.Errorf("项目仓库信息缺失:%s", j.Project)
+		logrus.Debugf("项目仓库信息缺失:%s，跳过", j.Project)
+		return nil
 	}
+	repoPath = repoCfg.Path
+	repoUrl = repoCfg.Url
 
-	git := repo.NewGitRepo(repoCfg.Path, repoCfg.Url)
+	// 创建GitRepo实例
+	git := repo.NewGitRepo(repoPath, repoUrl)
 
-	if !disableCheckMerged {
-		if merged, err = jc.checkBranchMerged(j, jb); err != nil {
-			return
-		}
-		if !merged {
-			logrus.Infof("跳过，分支未合并:%s \n", jb.BranchName)
-			return
-		}
-
-		//包含后标记
+	// 检查分支是否超过一周
+	branchTime, err = git.GetBranchCreateTime(jb.BranchName)
+	if err != nil {
+		logrus.Debugf("获取分支时间错误:%s\n", err)
+		// 即使获取时间失败，也标记为已合入，避免重复处理
 		jb.Merged = true
+		return nil
 	}
 
-	if !jb.Merged {
-		logrus.Infof("跳过，分支未合并1:%s \n", jb.BranchName)
+	// 检查是否超过一周
+	if time.Since(branchTime) <= 7*24*time.Hour {
+		logrus.Infof("跳过，分支未超过一周:%s \n", jb.BranchName)
 		return
 	}
 
-	logrus.Infof("正在删除分支:%s \n", jb.BranchName)
+	logrus.Infof("分支没有MR且超过一周，准备删除:%s \n", jb.BranchName)
 
-	//删除远程分支
+	// 删除远程分支 - 即使失败也继续，因为分支可能已经不存在
 	if err := git.DelRemoteBranch(jb.BranchName); err != nil {
 		logrus.Debugf("删除远程分支错误:%s\n", err)
+		// 分支不存在也视为删除成功
+		if strings.Contains(err.Error(), "远程引用不存在") || strings.Contains(err.Error(), "remote ref does not exist") {
+			logrus.Infof("远程分支不存在，视为删除成功:%s\n", jb.BranchName)
+		}
 	}
 
-	//删除本地分支
+	// 删除本地分支 - 即使失败也继续，因为分支可能已经不存在
 	if err := git.DelLocalBranch(jb.BranchName); err != nil {
-		logrus.Debugf("删除远程分支错误:%s\n", err)
+		logrus.Debugf("删除本地分支错误:%s\n", err)
+		// 分支不存在也视为删除成功
+		if strings.Contains(err.Error(), "错误：无法删除") || strings.Contains(err.Error(), "error: Cannot delete") {
+			logrus.Infof("本地分支不存在，视为删除成功:%s\n", jb.BranchName)
+		}
 	}
+
+	// 标记为已合入，下次跳过
+	jb.Merged = true
+	logrus.Infof("分支已标记为已合入:%s\n", jb.BranchName)
 
 	return
 }
@@ -150,26 +152,39 @@ func (jc *JiraController) branchExists(j *model.Jira, jb *model.JiraBranch) (exi
 		branchList []string
 	)
 
+	if jb.BranchName == "" {
+		return false, nil
+	}
+
 	if _, ok := jc.projectBranch[j.Project]; !ok {
-		repoCfg := jc.config.Repo[j.Project]
+		repoCfg := jc.config.GetProjectRepoUrl(j.Project)
 		if repoCfg == nil {
-			return false, fmt.Errorf("项目仓库信息缺失:%s", j.Project)
+			logrus.Debugf("项目仓库信息缺失:%s，跳过分支检查", j.Project)
+			return false, nil
 		}
 
 		git := repo.NewGitRepo(repoCfg.Path, repoCfg.Url)
 		if branchList, err = git.GetBranchs(); err != nil {
-			return
+			logrus.Debugf("获取本地分支错误:%s\n", err)
+			branchList = []string{}
 		}
-		util.PrintJson(branchList)
+		// 获取远程分支
+		var remoteBranchs []string
+		if remoteBranchs, err = git.GetRemoteBranchs(); err != nil {
+			logrus.Debugf("获取远程分支错误:%s\n", err)
+			remoteBranchs = []string{}
+		}
+		// 合并本地和远程分支
+		branchList = append(branchList, remoteBranchs...)
 		jc.projectBranch[j.Project] = branchList
 	}
 
 	branchList = jc.projectBranch[j.Project]
 	for _, v := range branchList {
-		if v == jb.TargetBranch {
+		// 检查分支名是否匹配
+		if v == jb.BranchName {
 			return true, nil
 		}
-
 	}
 
 	return false, nil
@@ -286,17 +301,19 @@ func (jc *JiraController) Print(project, jiraId string) (err error) {
 	}
 
 	for _, jr := range jc.jm.JiraList {
+		// 指定了JiraID时，忽略项目名称匹配
+		if jiraId != "" {
+			if jr.JiraID != jiraId {
+				continue
+			}
+		} else if project != "" && jr.Project != project {
+			continue
+		}
+
 		if jr.Complete() {
 			continue
 		}
 
-		if project != "" && jr.Project != project {
-			continue
-		}
-
-		if jiraId != "" && jr.JiraID != jiraId {
-			continue
-		}
 		sort.Slice(jr.BranchList, func(i, j int) bool {
 			if jr.BranchList[i].DevBranch != jr.BranchList[j].DevBranch {
 				return jr.BranchList[i].DevBranch > jr.BranchList[j].DevBranch
@@ -322,6 +339,7 @@ func (jc *JiraController) Print(project, jiraId string) (err error) {
 		l := ""
 		rows = append(rows, []string{l, l, l})
 	}
+
 	if len(rows) > 0 {
 		rows = rows[0 : len(rows)-1]
 	}

@@ -3,6 +3,7 @@ package repo
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -13,22 +14,22 @@ import (
 	"github.com/goeoeo/gitx/model"
 	"github.com/goeoeo/gitx/util"
 	"github.com/sirupsen/logrus"
-	"github.com/zput/zxcTool/ztLog/zt_formatter"
 	"gopkg.in/yaml.v3"
 )
 
 var cfg *Config
 
 type Config struct {
-	Repo           map[string]*Repo `yaml:"repo"`
-	Patch          *Patch           `yaml:"patch"`
-	HomeDir        string           `yaml:"home_dir"`
-	LogLevel       int              `yaml:"log_level"`
-	GitLabConfigs  []*GitLabConfig  `yaml:"gitLab_configs"`
-	pwd            string
-	logBuffer      bytes.Buffer
-	projectRepoUrl map[string]*Repo //存储project对应的repo地址
-	DisableInitLog bool
+	Repo            map[string]*Repo `yaml:"repo"`
+	Patch           *Patch           `yaml:"patch"`
+	HomeDir         string           `yaml:"home_dir"`
+	LogLevel        int              `yaml:"log_level"`
+	GitLabConfigs   []*GitLabConfig  `yaml:"gitLab_configs"`
+	pwd             string
+	logBuffer       bytes.Buffer
+	projectRepoUrl  map[string]*Repo //存储project对应的repo地址
+	DisableInitLog  bool
+	EnableLogOutput bool //是否启用日志输出到标准输出
 }
 
 type Repo struct {
@@ -257,20 +258,23 @@ func (c *Config) InitLog() {
 
 	if c.LogLevel > 0 {
 		logrus.SetLevel(logrus.Level(c.LogLevel))
-		return
+	} else {
+		logrus.SetLevel(logrus.InfoLevel)
 	}
 
-	//logLevel为0的情况,日志级别调整为debug，并将输出定向到文件
-	logrus.SetLevel(logrus.DebugLevel)
-	logrus.SetFormatter(&zt_formatter.ZtFormatter{
-		Formatter: nested.Formatter{
-			TimestampFormat: "2006-01-02T15:04:05.000",
-			HideKeys:        false,
-			TrimMessages:    true,
-			ShowFullLevel:   true,
-		},
+	logrus.SetFormatter(&nested.Formatter{
+		TimestampFormat: "2006-01-02T15:04:05.000",
+		HideKeys:        false,
+		TrimMessages:    true,
+		ShowFullLevel:   true,
 	})
-	logrus.SetOutput(&c.logBuffer)
+
+	// 只有在EnableLogOutput为true时，才将日志输出到标准输出
+	if c.EnableLogOutput && !c.DisableInitLog {
+		logrus.SetOutput(io.MultiWriter(os.Stdout, &c.logBuffer))
+	} else {
+		logrus.SetOutput(&c.logBuffer)
+	}
 
 }
 
@@ -279,6 +283,7 @@ func (c *Config) CheckErr(err error) {
 		return
 	}
 
+	// 出错时，将所有日志输出到标准输出
 	logBytes := c.logBuffer.Bytes()
 	os.Stdout.Write(logBytes)
 
@@ -347,5 +352,13 @@ func (c *Config) TransBranch(branchList []string) (res []string) {
 		res = append(res, branchName)
 	}
 
+	return
+}
+
+func (c *Config) GetProjectRepoUrl(projectName string) (repo *Repo) {
+	repo, ok := c.projectRepoUrl[projectName]
+	if ok {
+		return repo
+	}
 	return
 }

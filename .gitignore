@@ -27,3 +27,4 @@ micro-registry.json
 go.work
 go.work.sum
 bin/*
+/gitx
