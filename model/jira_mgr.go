@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/goeoeo/gitx/util"
@@ -23,12 +24,8 @@ type JiraMgr struct {
 func NewJiraMgr() (jm *JiraMgr, err error) {
 	d, _ := os.UserHomeDir()
 	jm = &JiraMgr{
-<<<<<<< Updated upstream
-		saveDir: d + "/.patch/",
-=======
 		saveDir: filepath.Join(d, ".patch"),
 		dbPath:  filepath.Join(d, ".patch", "gitx.db"),
->>>>>>> Stashed changes
 	}
 
 	// 初始化数据库
@@ -198,22 +195,6 @@ func (jm *JiraMgr) Detach(project, jiraID, branch string) (err error) {
 
 }
 
-<<<<<<< Updated upstream
-func (jm *JiraMgr) savePath() string {
-	return jm.saveDir + "/" + "jira.json"
-}
-
-func (jm *JiraMgr) load() (err error) {
-	var (
-		b []byte
-	)
-
-	// 文件不存在，创建
-	if _, err = os.Stat(jm.savePath()); err != nil {
-		if err = ioutil.WriteFile(jm.savePath(), []byte("[]"), fs.ModePerm); err != nil {
-			return
-		}
-=======
 // migrateFromJSON 从旧的JSON文件迁移数据到数据库
 func (jm *JiraMgr) migrateFromJSON() (err error) {
 	// 检查是否已经迁移过（通过检查是否有数据）
@@ -221,7 +202,6 @@ func (jm *JiraMgr) migrateFromJSON() (err error) {
 	row := jm.db.QueryRow("SELECT COUNT(*) FROM jira")
 	if err = row.Scan(&count); err != nil {
 		return fmt.Errorf("check migration status error: %v", err)
->>>>>>> Stashed changes
 	}
 
 	// 已有数据，跳过迁移
@@ -241,7 +221,7 @@ func (jm *JiraMgr) migrateFromJSON() (err error) {
 		return fmt.Errorf("read old jira.json error: %v", err)
 	}
 
-	if len(b) == 0 {	
+	if len(b) == 0 {
 		return
 	}
 

@@ -9,7 +9,7 @@ import (
 var rootCmd = &cobra.Command{}
 
 func main() {
-	rootCmd.AddCommand(cmd.PushCmd, cmd.PullCmd, cmd.JiraCmd, cmd.InitCmd, cmd.InfoCmd, cmd.HookCmd)
+	rootCmd.AddCommand(cmd.PushCmd, cmd.PullCmd, cmd.JiraCmd, cmd.InitCmd, cmd.InfoCmd, cmd.HookCmd, cmd.BranchDelCmd)
 	if err := rootCmd.Execute(); err != nil {
 		logrus.Debugf("run cmd err:%s", err)
 	}
