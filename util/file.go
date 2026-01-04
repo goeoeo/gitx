@@ -95,7 +95,7 @@ func WriteJsonFile(f string, v any) (err error) {
 		c []byte
 	)
 
-	if c, err = json.Marshal(v); err != nil {
+	if c, err = json.MarshalIndent(v, "", "  "); err != nil {
 		return
 	}
 	if err = os.WriteFile(f, c, os.ModePerm); err != nil {

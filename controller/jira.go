@@ -310,7 +310,8 @@ func (jc *JiraController) Print(project, jiraId string) (err error) {
 			continue
 		}
 
-		if jr.Complete() {
+		// 如果用户明确指定了jiraId，即使任务已完成也打印
+		if jr.Complete() && jiraId == "" {
 			continue
 		}
 
@@ -369,8 +370,17 @@ func (jc *JiraController) syncMergeInfo(project, jiraId string) (err error) {
 				continue
 			}
 
+			// 检查是否有可用的仓库信息
+			repoCfg := jc.config.Repo[jr.Project]
+			if repoCfg == nil || repoCfg.Url == "" || repoCfg.Path == "" {
+				logrus.Debugf("项目 %s 仓库信息缺失，跳过分支合并检查", jr.Project)
+				continue // 跳过此分支的合并检查
+			}
+
 			if merged, err = jc.checkBranchMerged(jr, jb); err != nil {
-				return
+				logrus.Debugf("检查分支 %s 合并状态错误: %v，跳过", jb.BranchName, err)
+				err = nil // 重置错误，继续处理其他分支
+				continue
 			}
 
 			if merged {

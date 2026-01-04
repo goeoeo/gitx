@@ -3,7 +3,6 @@ package cmd
 import (
 	_ "embed"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -63,6 +62,6 @@ func createPatchConfig() (err error) {
 
 	fmt.Println("请配置你的信息，路径为：", configPath)
 
-	err = ioutil.WriteFile(configPath, []byte(configContentTpl), os.ModePerm)
+	err = os.WriteFile(configPath, []byte(configContentTpl), os.ModePerm)
 	return
 }

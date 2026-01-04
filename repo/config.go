@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -75,7 +74,7 @@ func GetConfig(configPaths ...string) *Config {
 		configPath = filepath.Join(d, ".patch", "config.yaml")
 	}
 
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		panic(err)
 	}
